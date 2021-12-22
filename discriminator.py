@@ -14,18 +14,22 @@ class Discriminator(nn.Module):
             nf_mult_prev = nf_mult
             nf_mult = 2 ** n
             if n == n_layers:
-            model += [
-                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw),
-                nn.InstanceNorm2d(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
-            ]
+                model += [
+                    nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=1, padding=padw),
+                    nn.InstanceNorm2d(ndf * nf_mult),
+                    nn.LeakyReLU(0.2, True)
+                ]
             else:
-            model += [
-                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw),
-                nn.InstanceNorm2d(ndf * nf_mult),
-                nn.LeakyReLU(0.2, True)
-            ]
-        self.model = nn.Seqquential(*model)
+                model += [
+                    nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult, kernel_size=kw, stride=2, padding=padw),
+                    nn.InstanceNorm2d(ndf * nf_mult),
+                    nn.LeakyReLU(0.2, True)
+                ]
+        self.model = nn.Sequential(*model)
     
     def forward(self, x):
         return self.model(x)
+
+if __name__ == '__main__':
+    model = Discriminator(3)
+    print(model)
