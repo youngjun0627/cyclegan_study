@@ -69,5 +69,8 @@ mv "$TARGET_DIR/testB" "$TARGET_DIR/test/B"
  1. Show generated image by our model.
  2. And, compare generated image and original image.
 
-
+### Contribution
+1. Create new branch.
+2. In consideration of update, fetch main branch and merge.
+3. If Have finished the working, request your branch to main branch.
 
