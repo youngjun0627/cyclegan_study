@@ -1,7 +1,7 @@
 # CycleGAN Study
 
 ## reference
-Paper: https://arxiv.org/abs/1703.10593
+Paper: https://arxiv.org/abs/1703.10593   
 github: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
 
 ## Getting Started
@@ -14,7 +14,7 @@ cd cyclegan_study
 ```   
 vi config.py
 ```
-2. change the value of 'dataroot' key.
+Change the value of 'dataroot' key.
 
 ## Environment
 - Ubuntu 20.04
