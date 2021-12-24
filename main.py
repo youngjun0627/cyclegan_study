@@ -7,7 +7,14 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchvision.utils import save_image
+import argparse
+import cv2
+import numpy as np
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--mode', type=str, default='train', help='Select mode')
+parser.add_argument('--image_path', type=str, default='a.jpeg', help='When test mode, define image-path')
 
 def train(opt):
     if torch.cuda.is_available() and opt['cuda'] is not None:
@@ -97,13 +104,15 @@ def generate_image(opt, image_path):
         device = torch.device('cpu')
     # create & init model
     model = CycleGAN(opt)
-    model.load_state_dict('latest.pth')
+    model.load_state_dict(torch.load('latest.pth'))
     model.eval()
 
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = torch.tensor(img)
-    img = img.transpose((2, 0, 1))
+    img = cv2.resize(img, (256, 256))
+    img = np.transpose(img, (2, 0, 1))
+    img = np.expand_dims(img, 0)
+    img = torch.tensor(img, dtype=torch.float32).to(device)
 
     gen_images = model(img, img, mode='test')
     for idx, image in enumerate(gen_images):
@@ -111,7 +120,9 @@ def generate_image(opt, image_path):
 
 if __name__ == '__main__':
     opt = config.opt
-    if opt['mode'] == 'train':
+    arguments = parser.parse_args()
+    if arguments.mode == 'train':
         train(opt)
-    elif opt['mode'] == 'test':
+    elif arguments.mode == 'test':
+        image_path = arguments.image_path
         generate_image(opt, image_path)

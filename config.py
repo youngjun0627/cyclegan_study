@@ -18,7 +18,7 @@ opt['n_workers'] = 2 # parallel
 opt['n_epochs'] = 200 # number of epochs
 opt['decay_epoch'] = 100 # epoch to start linearly decaying the learning rate to 0
 opt['offset'] = 0 # for lambdaLR scheduler, starting epoch
-opt['cuda'] = 'cuda' # if use gpu, insert gpu id. or not(using cpu), insert None
+opt['cuda'] = 'cuda:1' # if use gpu, insert gpu id. or not(using cpu), insert None
 opt['eval_num'] = 10
 # weights for cycle loss
 opt['lambda_identity'] = 0.5
