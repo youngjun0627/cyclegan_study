@@ -6,8 +6,10 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from torchvision.utils import save_image
 
-def main(opt):
+
+def train(opt):
     if torch.cuda.is_available() and opt['cuda'] is not None:
         device = torch.device(opt['cuda'])
     else:
@@ -88,6 +90,28 @@ def main(opt):
             total_loss
         ))
 
+def generate_image(opt, image_path):
+    if torch.cuda.is_available() and opt['cuda'] is not None:
+        device = torch.device(opt['cuda'])
+    else:
+        device = torch.device('cpu')
+    # create & init model
+    model = CycleGAN(opt)
+    model.load_state_dict('latest.pth')
+    model.eval()
+
+    img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = torch.tensor(img)
+    img = img.transpose((2, 0, 1))
+
+    gen_images = model(img, img, mode='test')
+    for idx, image in enumerate(gen_images):
+        save_image(image, './{}.png'.format(idx))
+
 if __name__ == '__main__':
     opt = config.opt
-    main(opt)
+    if opt['mode'] == 'train':
+        train(opt)
+    elif opt['mode'] == 'test':
+        generate_image(opt, image_path)
