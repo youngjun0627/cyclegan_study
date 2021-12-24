@@ -51,11 +51,13 @@ class CycleGAN(nn.Module):
             )
             self.optimizers = [self.optimizer_G, self.optimizer_D]
 
-    def forward(self, real_A, real_B):
+    def forward(self, real_A, real_B, mode='train'):
         fake_B = self.netG_A(real_A)  # G_A(A)
         rec_A = self.netG_B(fake_B)   # G_B(G_A(A))
         fake_A = self.netG_B(real_B)  # G_B(B)
         rec_B = self.netG_A(fake_A)   # G_A(G_B(B))
+        if mode == 'test':
+            return fake_A, fake_B
 
         self.set_requires_grad([self.netD_A, self.netD_B], False)
         self.optimizer_G.zero_grad()
