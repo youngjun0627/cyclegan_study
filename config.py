@@ -1,8 +1,9 @@
 # Set the configuration for deep-learning
 
 opt = dict()
+opt['mode'] = 'train'
 opt['dataroot'] = '/mnt/data/guest0/datasets/cezanne2photo'
-opt['batch_size'] = 4
+opt['batch_size'] = 2
 opt['input_nc'] = 3 # input channel
 opt['output_nc'] = 3 # ouptut channel
 opt['ngf'] = 64 # generator filters in the last conv layer
@@ -12,7 +13,7 @@ opt['dataset_mode'] = 'unaligned' # choose how datasets are loaded. order or ran
 opt['size'] = 286 # to resize image
 opt['crop_size'] = 256 # crop-size of image
 opt['pool_size'] = 50 # image buffer size to store prev images
-opt['learning_rate'] = 0.001 # learning rate
+opt['learning_rate'] = 0.00025 # learning rate
 opt['beta1'] = 0.5 # for Adam optimizer
 opt['n_workers'] = 2 # parallel
 opt['n_epochs'] = 200 # number of epochs

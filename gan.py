@@ -11,7 +11,7 @@ from image_pool import ImagePool
 
 
 class CycleGAN(nn.Module):
-    def __init__(self, opt=None, mode='train'):
+    def __init__(self, opt=None):
         super(CycleGAN, self).__init__()
         if torch.cuda.is_available() and opt['cuda'] is not None:
             self.device = torch.device(opt['cuda'])
@@ -21,9 +21,18 @@ class CycleGAN(nn.Module):
         self.lambda_identity = opt['lambda_identity']
         self.lambda_A = opt['lambda_A']
         self.lambda_B = opt['lambda_B']
-        self.netG_A = Generator(opt['input_nc'], opt['output_nc']).to(self.device)
-        self.netG_B = Generator(opt['input_nc'], opt['output_nc']).to(self.device)
-        if mode == 'train':
+        self.use_dropout = False
+        self.netG_A = Generator(
+            opt['input_nc'],
+            opt['output_nc'],
+            use_dropout=self.use_dropout
+        ).to(self.device)
+        self.netG_B = Generator(
+            opt['input_nc'],
+            opt['output_nc'],
+            use_dropout=self.use_dropout
+        ).to(self.device)
+        if opt['mode'] == 'train':
             self.netD_A = Discriminator(opt['output_nc']).to(self.device)
             self.netD_B = Discriminator(opt['output_nc']).to(self.device)
             self.fake_A_pool = ImagePool(opt['pool_size'])  # create image buffer to store previously generated images

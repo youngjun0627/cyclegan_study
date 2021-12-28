@@ -14,7 +14,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', type=str, default='train', help='Select mode')
-parser.add_argument('--image_path', type=str, default='a.jpeg', help='When test mode, define image-path')
+parser.add_argument('--image_path', type=str, default='b.jpg', help='When test mode, define image-path')
 
 def train(opt):
     if torch.cuda.is_available() and opt['cuda'] is not None:
@@ -113,8 +113,15 @@ def generate_image(opt, image_path):
     img = np.transpose(img, (2, 0, 1))
     img = np.expand_dims(img, 0)
     img = torch.tensor(img, dtype=torch.float32).to(device)
-
-    gen_images = model(img, img, mode='test')
+    
+    reimage_path = '/mnt/data/guest0/datasets/cezanne2photo/test/A/00010.jpg'
+    re_img = cv2.imread(reimage_path, cv2.IMREAD_COLOR)
+    re_img = cv2.cvtColor(re_img, cv2.COLOR_BGR2RGB)
+    re_img = cv2.resize(re_img, (256, 256))
+    re_img = np.transpose(re_img, (2, 0, 1))
+    re_img = np.expand_dims(re_img, 0)
+    re_img = torch.tensor(re_img, dtype=torch.float32).to(device)
+    gen_images = model(img, re_img, mode='test')
     for idx, image in enumerate(gen_images):
         save_image(image, './{}.png'.format(idx))
 
