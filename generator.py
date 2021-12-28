@@ -1,6 +1,5 @@
 # ref: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
 
-import functools
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -12,12 +11,13 @@ class Generator(nn.Module):
         if model_name == 'ResNet':
             self.model = ResNet(input_nc, output_nc)
         elif model_name == 'ResNetFPN':
-            self.model = ResNetFPN(input_nc, output_nc, ResNetFPNBlock)
-        
+            self.model = ResNetFPN(input_nc, output_nc)
+
     def forward(self, x):
         return self.model(x)
 
 
+# Resnet
 class ResNet(nn.Module):
     def __init__(self, input_nc, output_nc, ngf=64, use_dropout=False, n_blocks=6):
         super(ResNet, self).__init__()
@@ -40,7 +40,7 @@ class ResNet(nn.Module):
         mult = 2 ** n_downsampling
         for i in range(n_blocks):       # add ResNet blocks
 
-            model += [ResnetBlock(ngf * mult, use_dropout=use_dropout)]
+            model += [ResNetBlock(ngf * mult, use_dropout=use_dropout)]
 
         for i in range(n_downsampling):  # add upsampling layers
             mult = 2 ** (n_downsampling - i)
@@ -94,18 +94,18 @@ class ResNetBlock(nn.Module):
         out = x + self.conv_block(x)  # add skip connections
         return out
 
+
+#  Resnet Feature Pyramid Network
 class ResNetFPN(nn.Module):
     def __init__(
         self,
         input_nc,
         output_nc,
-        block,
         ngf=64,
         use_dropout=True,
         layers=[3, 4, 6, 3],
-        fpn_weights = [1., 1., 1., 1.]
+        fpn_weights=[1.0, 0.5, 0.5, 0.5]
     ):
-        # ResNet(input_nc, output_nc, ngf, fpn_weights, BasicBlock_Ganilla, [3, 4, 6, 3], use_dropout=use_dropout, **kwargs)
         super(ResNetFPN, self).__init__()
         self.inplanes = ngf
         self.layer0 = nn.Sequential(
@@ -116,10 +116,10 @@ class ResNetFPN(nn.Module):
             nn.ReflectionPad2d(1),
             nn.MaxPool2d(kernel_size=3, stride=2, padding=0)
         )
-        self.layer1 = self._make_layer(block, 64, layers[0], use_dropout, stride=1)
-        self.layer2 = self._make_layer(block, 128, layers[1], use_dropout, stride=2)
-        self.layer3 = self._make_layer(block, 128, layers[2], use_dropout, stride=2)
-        self.layer4 = self._make_layer(block, 256, layers[3], use_dropout, stride=2)
+        self.layer1 = self._make_layer(64, layers[0], use_dropout, stride=1)
+        self.layer2 = self._make_layer(128, layers[1], use_dropout, stride=2)
+        self.layer3 = self._make_layer(128, layers[2], use_dropout, stride=2)
+        self.layer4 = self._make_layer(256, layers[3], use_dropout, stride=2)
         self.layer5 = nn.Sequential(
             nn.ReflectionPad2d(output_nc),
             nn.Conv2d(64, output_nc, 7),
@@ -133,11 +133,11 @@ class ResNetFPN(nn.Module):
             fpn_weights
         )
 
-    def _make_layer(self, block, planes, blocks, use_dropout, stride=1):
+    def _make_layer(self, planes, blocks, use_dropout, stride=1):
         strides = [stride] + [1] * (blocks - 1)
         layers = []
         for stride in strides:
-            layers.append(block(self.inplanes, planes, use_dropout, stride))
+            layers.append(ResNetFPNBlock(self.inplanes, planes, use_dropout, stride))
             self.inplanes = planes
         return nn.Sequential(*layers)
 
@@ -148,25 +148,23 @@ class ResNetFPN(nn.Module):
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
 
-        out = self.fpn([x1, x2, x3, x4]) # use all resnet layers
+        out = self.fpn([x4, x3, x2, x1])
         out = self.layer5(out)
 
         return out
 
 
-
-
 class ResNetFPNBlock(nn.Module):
     def __init__(self, in_planes, planes, use_dropout, stride=1):
         super(ResNetFPNBlock, self).__init__()
-        self.rp1 = nn.ReflectionPad2d(1)
+        self.pad1 = nn.ReflectionPad2d(1)
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=0, bias=False)
         self.bn1 = nn.InstanceNorm2d(planes)
         self.use_dropout = use_dropout
         if use_dropout:
             self.dropout = nn.Dropout(0.5)
 
-        self.rp2 = nn.ReflectionPad2d(1)
+        self.pad2 = nn.ReflectionPad2d(1)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=0, bias=False)
         self.bn2 = nn.InstanceNorm2d(planes)
 
@@ -184,67 +182,53 @@ class ResNetFPNBlock(nn.Module):
         )
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(self.rp1(x))))
+        out = F.relu(self.bn1(self.conv1(self.pad1(x))))
         if self.use_dropout:
             out = self.dropout(out)
-        out = self.bn2(self.conv2(self.rp2(out)))
+        out = self.bn2(self.conv2(self.pad2(out)))
         residual_input = self.shortcut(x)
         concat_out = torch.cat((out, residual_input), 1)
         out = self.final_conv(concat_out)
         out = F.relu(out)
         return out
 
+
 class PyramidFeatures(nn.Module):
-    def __init__(self, C2_size, C3_size, C4_size, C5_size, fpn_weights, feature_size=128):
+    def __init__(self, F2_size, F3_size, F4_size, F5_size, fpn_weights, output_size=128):
         super(PyramidFeatures, self).__init__()
 
-        self.sum_weights = fpn_weights #[1.0, 0.5, 0.5, 0.5]
+        self.weights = fpn_weights
 
-        self.P5_1 = nn.Conv2d(C5_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P5_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
-        
-        self.P4_1 = nn.Conv2d(C4_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P4_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
+        self.convList = nn.ModuleList([
+            nn.Conv2d(
+                feature_size,
+                output_size,
+                kernel_size=1,
+                stride=1,
+                padding=0
+            ) for feature_size in [F5_size, F4_size, F3_size, F2_size]
+        ])
 
-        self.P3_1 = nn.Conv2d(C3_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P3_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
-
-        self.P2_1 = nn.Conv2d(C2_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P2_upsampled = nn.Upsample(scale_factor=2, mode='nearest')
-        self.rp4 = nn.ReflectionPad2d(1)
-        self.P2_2 = nn.Conv2d(int(feature_size), int(feature_size/2), kernel_size=3, stride=1, padding=0)
-
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
+        self.last_pad = nn.ReflectionPad2d(1)
+        self.last_conv = nn.Conv2d(output_size, output_size // 2, kernel_size=3, stride=1, padding=0)
 
     def forward(self, inputs):
 
-        C2, C3, C4, C5 = inputs
-
-        i = 0
-        P5_x = self.P5_1(C5) * self.sum_weights[i]
-        P5_upsampled_x = self.P5_upsampled(P5_x)
-        
-        i += 1
-        P4_x = self.P4_1(C4) * self.sum_weights[i]
-        P4_x = P5_upsampled_x + P4_x
-        P4_upsampled_x = self.P4_upsampled(P4_x)
-        
-        i += 1
-        P3_x = self.P3_1(C3) * self.sum_weights[i]
-        P3_x = P3_x + P4_upsampled_x
-        P3_upsampled_x = self.P3_upsampled(P3_x)
-        
-        i += 1
-        P2_x = self.P2_1(C2) * self.sum_weights[i]
-        P2_x = P2_x * self.sum_weights[2] + P3_upsampled_x
-        P2_upsampled_x = self.P2_upsampled(P2_x)
-        P2_x = self.rp4(P2_upsampled_x)
-        P2_x = self.P2_2(P2_x)
-
-        return P2_x
+        output = None
+        for i, (x, conv) in enumerate(zip(inputs, self.convList)):
+            x = conv(x) * self.weights[i]
+            if output is None:
+                output = self.upsample(x)
+            else:
+                output = self.upsample(output + x)
+        output = self.last_pad(output)
+        output = self.last_conv(output)
+        return output
 
 
 if __name__ == '__main__':
-    model = Generator(3,3, use_dropout=True)
+    model = Generator(3, 3, use_dropout=True)
     #model = ResNetFPN(3, 3, 64, ResNetBlock)
     print(model)
-    print(model(torch.rand(2,3,256,256)).shape)
+    print(model(torch.rand(2, 3, 256, 256)).shape)
