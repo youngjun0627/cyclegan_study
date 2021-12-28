@@ -1,8 +1,9 @@
 # Set the configuration for deep-learning
 
 opt = dict()
+opt['mode'] = 'train'
 opt['dataroot'] = '/mnt/data/guest0/datasets/cezanne2photo'
-opt['batch_size'] = 4
+opt['batch_size'] = 2
 opt['input_nc'] = 3 # input channel
 opt['output_nc'] = 3 # ouptut channel
 opt['ngf'] = 64 # generator filters in the last conv layer
